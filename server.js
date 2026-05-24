@@ -242,9 +242,12 @@ app.post('/mcp', async (req, res) => {
     let transport;
     if (sessionId && sessions.has(sessionId)) {
       transport = sessions.get(sessionId);
-    } else if (isInitializeRequest(req.body)) {
+    } else if (isInitializeRequest(req.body) || (sessionId && !sessions.has(sessionId))) {
       const token = await resolveToken(req);
       if (!token) { res.status(401).json({ error: 'Unauthorized: valid token required' }); return; }
+      if (sessionId && !sessions.has(sessionId)) {
+        console.log(`[MCP] session ${sessionId} not found, re-initializing`);
+      }
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (sid) => { sessions.set(sid, transport); },
