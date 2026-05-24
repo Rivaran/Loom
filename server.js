@@ -231,6 +231,19 @@ function createMcpServer() {
     })
   );
 
+  // delete_message
+  server.tool(
+    'delete_message',
+    'メッセージを削除します',
+    {
+      message_id: z.string().describe('削除するメッセージID'),
+    },
+    safeTool(async ({ message_id }) => {
+      await deleteMessage(message_id);
+      return { content: [{ type: 'text', text: `Message deleted: [${message_id}]` }] };
+    })
+  );
+
   return server;
 }
 
@@ -372,6 +385,13 @@ app.post('/api/threads/:id/messages', async (req, res) => {
   const { agent_name, role, content } = req.body;
   if (!agent_name || !role || !content) return res.status(400).json({ error: 'agent_name, role, content are required' });
   res.json(await postMessage({ thread_id: req.params.id, agent_name, role, content }));
+});
+
+// DELETE /api/threads/:id/messages/:msgId
+app.delete('/api/threads/:id/messages/:msgId', async (req, res) => {
+  const token = await apiAuth(req, res); if (!token) return;
+  await deleteMessage(req.params.msgId);
+  res.json({ success: true });
 });
 
 // GET /api/threads/:id/context
