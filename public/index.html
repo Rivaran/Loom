@@ -489,9 +489,13 @@
     return { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' };
   }
 
-  async function apiFetch(path, opts = {}) {
+  async function apiFetch(path, opts = {}, retry = true) {
     const headers = await authHeaders();
     const res = await fetch(path, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+    if (res.status === 401 && retry) {
+      await supabaseClient.auth.refreshSession();
+      return apiFetch(path, opts, false);
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || res.statusText);
