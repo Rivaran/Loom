@@ -1,10 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { randomUUID } from 'crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import {
   supabase,
@@ -29,8 +27,6 @@ app.use(express.static('./public', {
     if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
   },
 }));
-
-const sessions = new Map();
 
 function safeTool(fn) {
   return async (args) => {
@@ -247,56 +243,17 @@ function createMcpServer() {
   return server;
 }
 
-// ─── MCP HTTP Endpoints ───────────────────────────────────────────────────────
+// ─── MCP HTTP Endpoints (stateless) ──────────────────────────────────────────
 
 app.post('/mcp', async (req, res) => {
   try {
-    const sessionId = req.headers['mcp-session-id'];
-    let transport;
-    if (sessionId && sessions.has(sessionId)) {
-      transport = sessions.get(sessionId);
-    } else if (isInitializeRequest(req.body) || (sessionId && !sessions.has(sessionId))) {
-      const token = await resolveToken(req);
-      if (!token) { res.status(401).json({ error: 'Unauthorized: valid token required' }); return; }
-      if (sessionId && !sessions.has(sessionId)) {
-        console.log(`[MCP] session ${sessionId} not found, re-initializing`);
-      }
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (sid) => { sessions.set(sid, transport); },
-      });
-      transport.onclose = () => { if (transport.sessionId) sessions.delete(transport.sessionId); };
-      await createMcpServer().connect(transport);
-    } else {
-      res.status(400).json({ error: 'Bad Request: invalid or missing session' }); return;
-    }
+    const token = await resolveToken(req);
+    if (!token) { res.status(401).json({ error: 'Unauthorized: valid token required' }); return; }
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    await createMcpServer().connect(transport);
     await transport.handleRequest(req, res, req.body);
   } catch (err) {
     console.error('[MCP POST error]', err.message);
-    if (!res.headersSent) res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.get('/mcp', async (req, res) => {
-  try {
-    const sessionId = req.headers['mcp-session-id'];
-    if (!sessionId || !sessions.has(sessionId)) { res.status(400).json({ error: 'Bad Request' }); return; }
-    await sessions.get(sessionId).handleRequest(req, res);
-  } catch (err) {
-    console.error('[MCP GET error]', err.message);
-    if (!res.headersSent) res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.delete('/mcp', async (req, res) => {
-  try {
-    const sessionId = req.headers['mcp-session-id'];
-    if (!sessionId || !sessions.has(sessionId)) { res.status(400).json({ error: 'Bad Request' }); return; }
-    const transport = sessions.get(sessionId);
-    await transport.handleRequest(req, res);
-    sessions.delete(sessionId);
-  } catch (err) {
-    console.error('[MCP DELETE error]', err.message);
     if (!res.headersSent) res.status(500).json({ error: 'Internal server error' });
   }
 });
