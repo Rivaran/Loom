@@ -441,6 +441,7 @@
 <script>
   // ── 設定 ─────────────────────────────────────────────────────────────────────
   let supabaseClient = null;
+  let currentSession = null;
   let currentUser = null;
   let currentToken = null; // APIトークン（取得できれば）
   let currentThread = null;
@@ -482,20 +483,11 @@
     }
   }
 
-  // JWTをBearerとして使うヘルパー
-  async function authHeaders() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) return {};
-    return { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' };
-  }
-
-  async function apiFetch(path, opts = {}, retry = true) {
-    const headers = await authHeaders();
+  async function apiFetch(path, opts = {}) {
+    const headers = {};
+    if (currentSession) headers['Authorization'] = `Bearer ${currentSession.access_token}`;
+    if (opts.body) headers['Content-Type'] = 'application/json';
     const res = await fetch(path, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
-    if (res.status === 401 && retry) {
-      await supabaseClient.auth.refreshSession();
-      return apiFetch(path, opts, false);
-    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.error || res.statusText);
@@ -775,8 +767,12 @@
   // ── 起動 ─────────────────────────────────────────────────────────────────────
   (async () => {
     await initSupabase();
-    supabaseClient.auth.onAuthStateChange((_event, session) => onAuthChange(session));
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      currentSession = session;
+      onAuthChange(session);
+    });
     const { data: { session } } = await supabaseClient.auth.getSession();
+    currentSession = session;
     onAuthChange(session);
     // デフォルトビュー
     switchView('threads');
