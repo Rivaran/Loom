@@ -290,7 +290,7 @@ app.get('/api/config', (req, res) => {
 app.get('/api/auth/token', async (req, res) => {
   // Service Role Keyが必要なため、Authorizationヘッダーで簡易確認
   const { data, error } = await supabase
-    .from('api_tokens')
+    .from('loom_api_tokens')
     .select('id, label, created_at')
     .order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
@@ -301,7 +301,7 @@ app.get('/api/auth/token', async (req, res) => {
 app.post('/api/auth/token', async (req, res) => {
   const { label } = req.body;
   const { data, error } = await supabase
-    .from('api_tokens')
+    .from('loom_api_tokens')
     .insert({ label: label || null })
     .select('id, label, created_at')
     .single();

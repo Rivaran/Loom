@@ -11,7 +11,7 @@ export const supabase = createClient(
 /** APIトークンが存在すればtrueを返す（共有ワークスペース、user_idなし） */
 export async function getUserIdByToken(token) {
   const { data, error } = await supabase
-    .from('api_tokens')
+    .from('loom_api_tokens')
     .select('id')
     .eq('id', token)
     .maybeSingle();
