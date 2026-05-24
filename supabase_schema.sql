@@ -40,7 +40,7 @@ create table memory_pins (
 );
 
 -- API Tokens（MCP認証用）
-create table api_tokens (
+create table loom_api_tokens (
   id uuid primary key default gen_random_uuid(),
   label text,
   created_at timestamptz default now()
@@ -50,4 +50,4 @@ alter table threads enable row level security;
 alter table messages enable row level security;
 alter table context_cards enable row level security;
 alter table memory_pins enable row level security;
-alter table api_tokens enable row level security;
+alter table loom_api_tokens enable row level security;
