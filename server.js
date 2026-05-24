@@ -8,7 +8,7 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import {
   supabase,
-  getUserIdByToken,
+  verifyJwt, getUserIdByToken,
   getThreads, createThread, archiveThread,
   getRecentMessages, postMessage, deleteMessage,
   getContextCard, upsertContextCard,
@@ -47,16 +47,21 @@ function safeTool(fn) {
 
 async function resolveToken(req) {
   const authHeader = req.headers.authorization;
+
+  // Supabase JWT（Web UI）
   if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    const valid = await getUserIdByToken(token);
-    if (valid) return token;
+    const jwt = authHeader.slice(7);
+    const userId = await verifyJwt(jwt);
+    if (userId) return jwt;
   }
+
+  // APIトークン（MCP）
   const token = req.query.token;
   if (token) {
     const valid = await getUserIdByToken(token);
     if (valid) return token;
   }
+
   return null;
 }
 

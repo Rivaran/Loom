@@ -8,6 +8,12 @@ export const supabase = createClient(
 
 // ── 認証 ─────────────────────────────────────────────────────────────────────
 
+export async function verifyJwt(jwt) {
+  const { data: { user }, error } = await supabase.auth.getUser(jwt);
+  if (error || !user) return null;
+  return user.id;
+}
+
 /** APIトークンが存在すればtrueを返す（共有ワークスペース、user_idなし） */
 export async function getUserIdByToken(token) {
   const { data, error } = await supabase

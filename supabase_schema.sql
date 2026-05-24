@@ -51,3 +51,10 @@ alter table messages enable row level security;
 alter table context_cards enable row level security;
 alter table memory_pins enable row level security;
 alter table loom_api_tokens enable row level security;
+
+-- RLS Policies（全員読み書き可、Loomは共有メモリなのでユーザー制限なし）
+create policy "threads_all" on threads for all to anon, authenticated using (true) with check (true);
+create policy "messages_all" on messages for all to anon, authenticated using (true) with check (true);
+create policy "context_cards_all" on context_cards for all to anon, authenticated using (true) with check (true);
+create policy "memory_pins_all" on memory_pins for all to anon, authenticated using (true) with check (true);
+create policy "loom_api_tokens_select" on loom_api_tokens for select to anon, authenticated using (true);
