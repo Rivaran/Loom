@@ -276,6 +276,17 @@ app.delete('/mcp', async (req, res) => {
   }
 });
 
+// ─── JWT認証（UI用） ──────────────────────────────────────────────────────────
+
+async function verifyJwt(req, res) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) { res.status(401).json({ error: 'Unauthorized' }); return null; }
+  const jwt = authHeader.slice(7);
+  const { data: { user }, error } = await supabase.auth.getUser(jwt);
+  if (error || !user) { res.status(401).json({ error: 'Unauthorized' }); return null; }
+  return user;
+}
+
 // ─── REST API ─────────────────────────────────────────────────────────────────
 
 // GET /api/config（Supabase公開情報）
@@ -288,7 +299,7 @@ app.get('/api/config', (req, res) => {
 
 // GET /api/auth/token（トークン一覧）
 app.get('/api/auth/token', async (req, res) => {
-  // Service Role Keyが必要なため、Authorizationヘッダーで簡易確認
+  const user = await verifyJwt(req, res); if (!user) return;
   const { data, error } = await supabase
     .from('loom_api_tokens')
     .select('id, label, created_at')
@@ -299,6 +310,7 @@ app.get('/api/auth/token', async (req, res) => {
 
 // POST /api/auth/token（トークン発行）
 app.post('/api/auth/token', async (req, res) => {
+  const user = await verifyJwt(req, res); if (!user) return;
   const { label } = req.body;
   const { data, error } = await supabase
     .from('loom_api_tokens')
@@ -311,6 +323,7 @@ app.post('/api/auth/token', async (req, res) => {
 
 // DELETE /api/auth/token/:id（トークン削除）
 app.delete('/api/auth/token/:id', async (req, res) => {
+  const user = await verifyJwt(req, res); if (!user) return;
   const { error } = await supabase
     .from('loom_api_tokens')
     .delete()

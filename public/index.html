@@ -507,7 +507,7 @@
   }
 
   async function loadMcpToken() {
-    const tokens = await fetch('/api/auth/token').then(r => r.json()).catch(() => []);
+    const tokens = await apiFetch('/api/auth/token').catch(() => []);
     renderMcpSection(tokens[0] || null);
   }
 
@@ -530,22 +530,20 @@
   }
 
   async function generateMcpToken() {
-    const token = await fetch('/api/auth/token', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label: 'default' })
-    }).then(r => r.json());
+    const token = await apiFetch('/api/auth/token', {
+      method: 'POST', body: JSON.stringify({ label: 'default' })
+    });
     renderMcpSection(token);
   }
 
   async function regenerateMcpToken() {
-    const tokens = await fetch('/api/auth/token').then(r => r.json()).catch(() => []);
+    const tokens = await apiFetch('/api/auth/token').catch(() => []);
     for (const t of tokens) {
-      await fetch(`/api/auth/token/${t.id}`, { method: 'DELETE' }).catch(() => {});
+      await apiFetch(`/api/auth/token/${t.id}`, { method: 'DELETE' }).catch(() => {});
     }
-    const token = await fetch('/api/auth/token', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ label: 'default' })
-    }).then(r => r.json());
+    const token = await apiFetch('/api/auth/token', {
+      method: 'POST', body: JSON.stringify({ label: 'default' })
+    });
     renderMcpSection(token);
   }
 
