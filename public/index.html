@@ -250,6 +250,26 @@
     .modal input::placeholder, .modal textarea::placeholder { color: rgba(255,255,255,0.3); }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 
+    /* 設定パネル */
+    #settings-panel {
+      flex-shrink: 0; overflow: hidden; max-height: 0;
+      transition: max-height 0.3s ease;
+      background: rgba(13,27,42,0.95);
+      border-bottom: 1px solid rgba(126,184,224,0.15);
+    }
+    #settings-panel.open { max-height: 200px; }
+    #settings-inner { padding: 14px 16px; }
+    #settings-inner h3 { font-size: 0.85rem; color: #7eb8e0; margin-bottom: 10px; }
+    .mcp-url-box {
+      background: rgba(255,255,255,0.05); border-radius: 8px; padding: 8px 12px;
+      font-size: 0.72rem; color: rgba(255,255,255,0.6); word-break: break-all;
+      font-family: monospace; margin-bottom: 10px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.1); transition: background 0.15s;
+    }
+    .mcp-url-box:hover { background: rgba(126,184,224,0.1); }
+    .mcp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .mcp-note { font-size: 0.7rem; color: rgba(255,255,255,0.3); margin-top: 8px; }
+
     /* スクロールバー */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -290,9 +310,18 @@
       <p id="header-user"></p>
     </div>
     <div class="header-right">
+      <button class="icon-btn" id="settings-btn" title="設定" onclick="toggleSettings()">⚙️</button>
       <button class="icon-btn" title="サインアウト" onclick="signOut()">⏏</button>
     </div>
   </header>
+
+  <!-- 設定パネル -->
+  <div id="settings-panel">
+    <div id="settings-inner">
+      <h3>⚙️ MCP設定</h3>
+      <div id="mcp-content"></div>
+    </div>
+  </div>
 
   <div id="main">
 
@@ -443,10 +472,9 @@
   async function onAuthChange(session) {
     if (session?.user) {
       currentUser = session.user;
-      document.getElementById('header-user').textContent = currentUser.email || '';
       document.getElementById('login-screen').classList.remove('active');
       document.getElementById('app').classList.add('active');
-      // JWT→APIトークン取得を試みる（あれば）
+      await loadMcpToken();
       await loadThreads();
     } else {
       document.getElementById('login-screen').classList.add('active');
@@ -469,6 +497,56 @@
       throw new Error(err.error || res.statusText);
     }
     return res.json();
+  }
+
+  // ── 設定パネル ────────────────────────────────────────────────────────────────
+  let settingsOpen = false;
+  function toggleSettings() {
+    settingsOpen = !settingsOpen;
+    document.getElementById('settings-panel').classList.toggle('open', settingsOpen);
+  }
+
+  async function loadMcpToken() {
+    const tokens = await apiFetch('/api/auth/token').catch(() => []);
+    renderMcpSection(tokens[0] || null);
+  }
+
+  function renderMcpSection(token) {
+    const el = document.getElementById('mcp-content');
+    if (!token) {
+      el.innerHTML = `<p style="font-size:0.82rem;color:rgba(255,255,255,0.4);margin-bottom:10px;">MCPトークンを発行するとAIから記録できます。</p>
+        <button class="btn btn-primary" onclick="generateMcpToken()">MCPトークンを発行する</button>`;
+    } else {
+      const mcpUrl = `${location.origin}/mcp?token=${token.id}`;
+      el.innerHTML = `
+        <p style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-bottom:6px;">MCP URL（AIに設定してください）:</p>
+        <div class="mcp-url-box" onclick="copyText('${mcpUrl}')">${mcpUrl}</div>
+        <div class="mcp-actions">
+          <button class="btn btn-primary" onclick="copyText('${mcpUrl}')">📋 コピー</button>
+          <button class="btn btn-ghost" onclick="regenerateMcpToken()">🔄 再発行</button>
+        </div>
+        <p class="mcp-note">※URLは秘密にしてください。</p>`;
+    }
+  }
+
+  async function generateMcpToken() {
+    const token = await apiFetch('/api/auth/token', { method: 'POST', body: JSON.stringify({ label: 'default' }) });
+    renderMcpSection(token);
+  }
+
+  async function regenerateMcpToken() {
+    // 既存トークンを全削除してから新規発行
+    const tokens = await apiFetch('/api/auth/token').catch(() => []);
+    for (const t of tokens) {
+      await apiFetch(`/api/auth/token/${t.id}`, { method: 'DELETE' }).catch(() => {});
+    }
+    const token = await apiFetch('/api/auth/token', { method: 'POST', body: JSON.stringify({ label: 'default' }) });
+    renderMcpSection(token);
+  }
+
+  async function copyText(text) {
+    await navigator.clipboard.writeText(text);
+    alert('コピーしました');
   }
 
   // ── ビュー切替 ───────────────────────────────────────────────────────────────

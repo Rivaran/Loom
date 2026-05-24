@@ -309,6 +309,16 @@ app.post('/api/auth/token', async (req, res) => {
   res.json(data);
 });
 
+// DELETE /api/auth/token/:id（トークン削除）
+app.delete('/api/auth/token/:id', async (req, res) => {
+  const { error } = await supabase
+    .from('loom_api_tokens')
+    .delete()
+    .eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
 // GET /api/threads
 app.get('/api/threads', async (req, res) => {
   const token = await apiAuth(req, res); if (!token) return;
