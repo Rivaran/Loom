@@ -501,13 +501,14 @@
 
   // ── 設定パネル ────────────────────────────────────────────────────────────────
   let settingsOpen = false;
-  function toggleSettings() {
+  async function toggleSettings() {
     settingsOpen = !settingsOpen;
     document.getElementById('settings-panel').classList.toggle('open', settingsOpen);
+    if (settingsOpen) await loadMcpToken();
   }
 
   async function loadMcpToken() {
-    const tokens = await apiFetch('/api/auth/token').catch(() => []);
+    const tokens = await apiFetch('/api/auth/token').catch(err => { console.error('[loadMcpToken]', err); return []; });
     renderMcpSection(tokens[0] || null);
   }
 
