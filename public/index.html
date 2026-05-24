@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Loom</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+      background: linear-gradient(135deg, #0d1b2a 0%, #1a2f4a 100%);
+      color: #e0e8f0;
+      overflow: hidden;
+      height: 100dvh;
+    }
+
+    /* ── ログイン ── */
+    #login-screen { display: none; min-height: 100dvh; align-items: center; justify-content: center; }
+    #login-screen.active { display: flex; }
+
+    .login-card {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px);
+      border-radius: 20px; padding: 48px 36px;
+      text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      max-width: 360px; width: 90%;
+    }
+    .login-card .logo { font-size: 2.8rem; margin-bottom: 12px; }
+    .login-card h1 { font-size: 1.8rem; color: #7eb8e0; margin-bottom: 6px; letter-spacing: 0.1em; }
+    .login-card p { font-size: 0.88rem; color: rgba(255,255,255,0.5); margin-bottom: 36px; }
+
+    .google-btn {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      width: 100%; padding: 14px 20px;
+      border: 1.5px solid rgba(255,255,255,0.25);
+      border-radius: 12px; background: rgba(255,255,255,0.08);
+      font-family: inherit; font-size: 0.95rem; font-weight: 600;
+      color: #e0e8f0; cursor: pointer; transition: all 0.2s;
+    }
+    .google-btn:hover { border-color: #7eb8e0; background: rgba(126,184,224,0.15); }
+
+    /* ── アプリ ── */
+    #app { display: none; }
+    #app.active { display: flex; flex-direction: column; height: 100dvh; }
+
+    /* ── ヘッダー ── */
+    header {
+      flex-shrink: 0;
+      background: linear-gradient(90deg, #0d1b2a, #1a2f4a);
+      border-bottom: 1px solid rgba(126,184,224,0.2);
+      color: white; padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-left h1 { font-size: 1.3rem; font-weight: 700; color: #7eb8e0; letter-spacing: 0.1em; }
+    .header-left p { font-size: 0.72rem; opacity: 0.5; margin-top: 2px; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+
+    .icon-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15); color: #c0d8ee;
+      width: 34px; height: 34px; border-radius: 8px; font-size: 1rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .icon-btn:hover { background: rgba(126,184,224,0.2); }
+
+    /* ── メインコンテンツ ── */
+    #main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* ── スレッド一覧ビュー ── */
+    #view-threads { display: none; flex-direction: column; height: 100%; }
+    #view-threads.active { display: flex; }
+
+    .view-header {
+      flex-shrink: 0; padding: 12px 16px;
+      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .view-header h2 { font-size: 0.95rem; color: #7eb8e0; flex: 1; }
+
+    .btn {
+      padding: 7px 14px; border-radius: 8px; border: none;
+      font-family: inherit; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary { background: #2e86ab; color: white; }
+    .btn-primary:hover { background: #3a9bc7; }
+    .btn-ghost {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15); color: #c0d8ee;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.12); }
+
+    .thread-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .thread-item {
+      padding: 14px 16px; border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      margin-bottom: 6px; cursor: pointer; transition: all 0.2s;
+    }
+    .thread-item:hover { background: rgba(126,184,224,0.1); border-color: rgba(126,184,224,0.3); }
+    .thread-item-title { font-size: 0.95rem; font-weight: 600; color: #d0e8f8; margin-bottom: 4px; }
+    .thread-item-meta { font-size: 0.75rem; color: rgba(255,255,255,0.4); display: flex; gap: 8px; }
+    .tag-pill {
+      display: inline-block; padding: 2px 8px;
+      background: rgba(46,134,171,0.25); color: #7eb8e0;
+      border-radius: 20px; font-size: 0.72rem;
+    }
+
+    /* ── スレッド詳細ビュー ── */
+    #view-thread { display: none; flex-direction: column; height: 100%; }
+    #view-thread.active { display: flex; }
+
+    .thread-detail-header {
+      flex-shrink: 0; padding: 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .thread-detail-header h2 {
+      flex: 1; font-size: 0.95rem; color: #c0d8ee;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .tab-bar {
+      flex-shrink: 0; display: flex;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .tab-btn {
+      flex: 1; padding: 10px; border: none; background: transparent;
+      font-family: inherit; font-size: 0.8rem; color: rgba(255,255,255,0.45);
+      cursor: pointer; transition: all 0.2s; border-bottom: 2px solid transparent;
+    }
+    .tab-btn.active { color: #7eb8e0; border-bottom-color: #7eb8e0; }
+    .tab-btn:hover:not(.active) { color: rgba(255,255,255,0.7); }
+
+    .tab-panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+    .tab-panel.active { display: flex; }
+
+    /* メッセージ */
+    #msg-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .msg-bubble {
+      padding: 10px 14px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+    }
+    .msg-bubble.role-user { background: rgba(46,134,171,0.12); border-color: rgba(46,134,171,0.25); }
+    .msg-bubble.role-assistant { background: rgba(30,58,95,0.3); }
+    .msg-meta { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+    .msg-meta .agent-name { color: #7eb8e0; font-weight: 600; }
+    .msg-content { font-size: 0.88rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+
+    .msg-input-area {
+      flex-shrink: 0; padding: 10px 12px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    .msg-input-area textarea {
+      flex: 1; padding: 9px 12px; background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+      color: #e0e8f0; font-family: inherit; font-size: 0.88rem;
+      resize: none; min-height: 40px; max-height: 120px; outline: none;
+    }
+    .msg-input-area textarea:focus { border-color: #2e86ab; }
+
+    /* コンテキストカード */
+    #ctx-panel { padding: 14px; overflow-y: auto; }
+    .ctx-field { margin-bottom: 16px; }
+    .ctx-field label { display: block; font-size: 0.75rem; color: #7eb8e0; margin-bottom: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .ctx-field textarea {
+      width: 100%; padding: 8px 10px; background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;
+      color: #e0e8f0; font-family: inherit; font-size: 0.85rem;
+      resize: vertical; min-height: 60px; outline: none;
+    }
+    .ctx-field textarea:focus { border-color: #2e86ab; }
+    .ctx-agent-views { margin-top: 8px; }
+    .agent-view-item {
+      padding: 8px 10px; background: rgba(255,255,255,0.04);
+      border-radius: 6px; margin-bottom: 4px;
+      font-size: 0.82rem; color: rgba(255,255,255,0.6);
+    }
+    .agent-view-item strong { color: #7eb8e0; }
+
+    /* ── メモリ検索ビュー ── */
+    #view-memory { display: none; flex-direction: column; height: 100%; }
+    #view-memory.active { display: flex; }
+
+    .memory-search-bar {
+      flex-shrink: 0; padding: 12px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex; gap: 8px; align-items: center;
+    }
+    .memory-search-bar input {
+      flex: 1; padding: 9px 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+      color: #e0e8f0; font-family: inherit; font-size: 0.88rem; outline: none;
+    }
+    .memory-search-bar input:focus { border-color: #2e86ab; }
+    .memory-search-bar input::placeholder { color: rgba(255,255,255,0.3); }
+
+    .memory-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .memory-item {
+      padding: 12px 14px; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px; margin-bottom: 6px;
+    }
+    .memory-item-content { font-size: 0.88rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #d0e8f8; }
+    .memory-item-meta { font-size: 0.72rem; color: rgba(255,255,255,0.35); margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ── ボトムナビ ── */
+    nav {
+      flex-shrink: 0;
+      display: flex; background: rgba(13,27,42,0.95);
+      border-top: 1px solid rgba(126,184,224,0.15);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .nav-btn {
+      flex: 1; padding: 10px 8px 8px;
+      border: none; background: transparent;
+      font-family: inherit; color: rgba(255,255,255,0.4);
+      cursor: pointer; display: flex; flex-direction: column;
+      align-items: center; gap: 3px; transition: color 0.2s; font-size: 0.7rem;
+    }
+    .nav-btn .nav-icon { font-size: 1.3rem; }
+    .nav-btn.active { color: #7eb8e0; }
+    .nav-btn:hover:not(.active) { color: rgba(255,255,255,0.7); }
+
+    /* ── モーダル ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #1a2f4a; border: 1px solid rgba(126,184,224,0.2);
+      border-radius: 16px; padding: 24px; width: 90%; max-width: 400px;
+    }
+    .modal h3 { font-size: 1rem; color: #7eb8e0; margin-bottom: 16px; }
+    .modal input, .modal textarea {
+      width: 100%; padding: 9px 12px; margin-bottom: 10px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px; color: #e0e8f0; font-family: inherit; font-size: 0.88rem; outline: none;
+    }
+    .modal input:focus, .modal textarea:focus { border-color: #2e86ab; }
+    .modal input::placeholder, .modal textarea::placeholder { color: rgba(255,255,255,0.3); }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+
+    /* スクロールバー */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(126,184,224,0.25); border-radius: 2px; }
+
+    .empty-state {
+      text-align: center; padding: 48px 16px;
+      color: rgba(255,255,255,0.3); font-size: 0.88rem;
+    }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<!-- ログイン画面 -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="logo">🧵</div>
+    <h1>Loom</h1>
+    <p>エージェント間の共有スレッドスペース</p>
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg width="20" height="20" viewBox="0 0 48 48">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Googleでログイン
+    </button>
+  </div>
+</div>
+
+<!-- アプリ本体 -->
+<div id="app">
+  <header>
+    <div class="header-left">
+      <h1>🧵 Loom</h1>
+      <p id="header-user"></p>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" title="サインアウト" onclick="signOut()">⏏</button>
+    </div>
+  </header>
+
+  <div id="main">
+
+    <!-- スレッド一覧 -->
+    <div id="view-threads">
+      <div class="view-header">
+        <h2>スレッド</h2>
+        <button class="btn btn-ghost" id="btn-toggle-archived" onclick="toggleArchived()">アーカイブ表示</button>
+        <button class="btn btn-primary" onclick="openCreateThread()">＋ 新規</button>
+      </div>
+      <div class="thread-list" id="thread-list">
+        <div class="empty-state"><div class="empty-icon">💬</div>スレッドがありません</div>
+      </div>
+    </div>
+
+    <!-- スレッド詳細 -->
+    <div id="view-thread">
+      <div class="thread-detail-header">
+        <button class="icon-btn" onclick="backToThreads()">←</button>
+        <h2 id="thread-detail-title"></h2>
+        <button class="icon-btn" title="アーカイブ" onclick="doArchiveThread()">🗄</button>
+      </div>
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('messages', this)">メッセージ</button>
+        <button class="tab-btn" onclick="switchTab('context', this)">コンテキスト</button>
+      </div>
+
+      <!-- メッセージタブ -->
+      <div id="tab-messages" class="tab-panel active">
+        <div id="msg-list"></div>
+        <div class="msg-input-area">
+          <textarea id="msg-content" placeholder="メッセージを入力..." rows="1"
+            oninput="autoResize(this)" onkeydown="msgKeydown(event)"></textarea>
+          <button class="btn btn-primary" onclick="sendMessage()">送信</button>
+        </div>
+      </div>
+
+      <!-- コンテキストカードタブ -->
+      <div id="tab-context" class="tab-panel">
+        <div id="ctx-panel">
+          <div class="ctx-field">
+            <label>Summary</label>
+            <textarea id="ctx-summary" placeholder="サマリー..."></textarea>
+          </div>
+          <div class="ctx-field">
+            <label>Decisions</label>
+            <textarea id="ctx-decisions" placeholder="決定事項..."></textarea>
+          </div>
+          <div class="ctx-field">
+            <label>Open Questions</label>
+            <textarea id="ctx-open-questions" placeholder="未解決の問い..."></textarea>
+          </div>
+          <div class="ctx-field">
+            <label>Next Actions</label>
+            <textarea id="ctx-next-actions" placeholder="次のアクション..."></textarea>
+          </div>
+          <div class="ctx-field">
+            <label>Agent Views</label>
+            <div id="ctx-agent-views" class="ctx-agent-views"></div>
+          </div>
+          <button class="btn btn-primary" style="width:100%; margin-top:4px;" onclick="saveContextCard()">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- メモリ検索 -->
+    <div id="view-memory">
+      <div class="memory-search-bar">
+        <input type="text" id="memory-search-input" placeholder="メモリを検索..."
+          oninput="debounceMemorySearch(this.value)" />
+        <button class="btn btn-primary" onclick="openPinMemory()">＋ ピン</button>
+      </div>
+      <div class="memory-list" id="memory-list">
+        <div class="empty-state"><div class="empty-icon">📌</div>ピン留めメモリがありません</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ボトムナビ -->
+  <nav>
+    <button class="nav-btn active" id="nav-threads" onclick="switchView('threads')">
+      <span class="nav-icon">💬</span>スレッド
+    </button>
+    <button class="nav-btn" id="nav-memory" onclick="switchView('memory')">
+      <span class="nav-icon">📌</span>メモリ
+    </button>
+  </nav>
+</div>
+
+<!-- モーダル: スレッド作成 -->
+<div class="modal-overlay" id="modal-create-thread">
+  <div class="modal">
+    <h3>新規スレッド</h3>
+    <input type="text" id="new-thread-title" placeholder="タイトル" />
+    <input type="text" id="new-thread-tags" placeholder="タグ（カンマ区切り）" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-create-thread')">キャンセル</button>
+      <button class="btn btn-primary" onclick="createThread()">作成</button>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル: メモリピン -->
+<div class="modal-overlay" id="modal-pin-memory">
+  <div class="modal">
+    <h3>メモリをピン留め</h3>
+    <textarea id="pin-content" placeholder="内容..." rows="4"></textarea>
+    <input type="text" id="pin-tags" placeholder="タグ（カンマ区切り）" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-pin-memory')">キャンセル</button>
+      <button class="btn btn-primary" onclick="pinMemory()">ピン留め</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── 設定 ─────────────────────────────────────────────────────────────────────
+  let supabaseClient = null;
+  let currentUser = null;
+  let currentToken = null; // APIトークン（取得できれば）
+  let currentThread = null;
+  let showArchived = false;
+  let memorySearchTimer = null;
+
+  const DEFAULT_AGENT = 'user';
+
+  async function initSupabase() {
+    const res = await fetch('/api/config');
+    const { supabaseUrl, supabaseAnonKey } = await res.json();
+    supabaseClient = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+  }
+
+  // ── 認証 ─────────────────────────────────────────────────────────────────────
+  async function signInWithGoogle() {
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: location.origin },
+    });
+    if (error) alert('ログインエラー: ' + error.message);
+  }
+
+  async function signOut() {
+    await supabaseClient.auth.signOut();
+    location.reload();
+  }
+
+  async function onAuthChange(session) {
+    if (session?.user) {
+      currentUser = session.user;
+      document.getElementById('header-user').textContent = currentUser.email || '';
+      document.getElementById('login-screen').classList.remove('active');
+      document.getElementById('app').classList.add('active');
+      // JWT→APIトークン取得を試みる（あれば）
+      await loadThreads();
+    } else {
+      document.getElementById('login-screen').classList.add('active');
+      document.getElementById('app').classList.remove('active');
+    }
+  }
+
+  // JWTをBearerとして使うヘルパー
+  async function authHeaders() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return {};
+    return { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' };
+  }
+
+  async function apiFetch(path, opts = {}) {
+    const headers = await authHeaders();
+    const res = await fetch(path, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || res.statusText);
+    }
+    return res.json();
+  }
+
+  // ── ビュー切替 ───────────────────────────────────────────────────────────────
+  function switchView(view) {
+    document.querySelectorAll('#main > div').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('view-' + view).classList.add('active');
+    document.getElementById('nav-' + view)?.classList.add('active');
+    if (view === 'memory') loadMemoryList('');
+  }
+
+  function backToThreads() {
+    currentThread = null;
+    switchView('threads');
+    document.getElementById('nav-threads').classList.add('active');
+  }
+
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (tab === 'context') loadContextCard();
+  }
+
+  // ── スレッド ─────────────────────────────────────────────────────────────────
+  async function loadThreads() {
+    const threads = await apiFetch(`/api/threads?archived=${showArchived}`).catch(() => []);
+    renderThreadList(threads);
+  }
+
+  function renderThreadList(threads) {
+    const el = document.getElementById('thread-list');
+    if (!threads.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div>スレッドがありません</div>';
+      return;
+    }
+    el.innerHTML = threads.map(t => {
+      const tags = (t.tags || []).map(g => `<span class="tag-pill">${esc(g)}</span>`).join(' ');
+      const date = t.updated_at?.slice(0, 10) || '';
+      return `<div class="thread-item" onclick="openThread('${t.id}', '${esc(t.title)}')">
+        <div class="thread-item-title">${esc(t.title)}</div>
+        <div class="thread-item-meta">${tags}<span>${date}</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleArchived() {
+    showArchived = !showArchived;
+    document.getElementById('btn-toggle-archived').textContent = showArchived ? 'アクティブ表示' : 'アーカイブ表示';
+    loadThreads();
+  }
+
+  function openCreateThread() { openModal('modal-create-thread'); }
+
+  async function createThread() {
+    const title = document.getElementById('new-thread-title').value.trim();
+    if (!title) return alert('タイトルを入力してください');
+    const tagsRaw = document.getElementById('new-thread-tags').value;
+    const tags = tagsRaw ? tagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+    await apiFetch('/api/threads', { method: 'POST', body: JSON.stringify({ title, tags }) });
+    closeModal('modal-create-thread');
+    document.getElementById('new-thread-title').value = '';
+    document.getElementById('new-thread-tags').value = '';
+    loadThreads();
+  }
+
+  async function openThread(id, title) {
+    currentThread = id;
+    document.getElementById('thread-detail-title').textContent = title;
+    // タブをメッセージに戻す
+    document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
+    document.querySelectorAll('.tab-panel').forEach((p, i) => p.classList.toggle('active', i === 0));
+    switchView('thread');
+    document.getElementById('nav-threads').classList.add('active');
+    await loadMessages();
+  }
+
+  async function doArchiveThread() {
+    if (!currentThread || !confirm('このスレッドをアーカイブしますか？')) return;
+    await apiFetch(`/api/threads/${currentThread}`, {
+      method: 'PUT',
+      body: JSON.stringify({ archived: true }),
+    }).catch(async () => {
+      // PUT /api/threads/:id は実装していないのでコンテキスト経由で代替しない
+      // archive は専用エンドポイントを将来追加想定。今はサービスロールで直接操作を促す案内
+      alert('アーカイブAPIは未実装です。Supabaseダッシュボードから操作してください。');
+    });
+    backToThreads();
+    loadThreads();
+  }
+
+  // ── メッセージ ────────────────────────────────────────────────────────────────
+  async function loadMessages() {
+    if (!currentThread) return;
+    const messages = await apiFetch(`/api/threads/${currentThread}/messages`).catch(() => []);
+    renderMessages(messages);
+  }
+
+  function renderMessages(messages) {
+    const el = document.getElementById('msg-list');
+    if (!messages.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">💭</div>メッセージがありません</div>';
+      return;
+    }
+    el.innerHTML = messages.map(m => {
+      const time = m.created_at?.slice(0, 16).replace('T', ' ') || '';
+      return `<div class="msg-bubble role-${m.role}">
+        <div class="msg-meta"><span class="agent-name">${esc(m.agent_name)}</span> · ${m.role} · ${time}</div>
+        <div class="msg-content">${esc(m.content)}</div>
+      </div>`;
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  async function sendMessage() {
+    const content = document.getElementById('msg-content').value.trim();
+    if (!content || !currentThread) return;
+    const body = { agent_name: DEFAULT_AGENT, role: 'user', content };
+    await apiFetch(`/api/threads/${currentThread}/messages`, { method: 'POST', body: JSON.stringify(body) });
+    document.getElementById('msg-content').value = '';
+    autoResize(document.getElementById('msg-content'));
+    await loadMessages();
+  }
+
+  function msgKeydown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  // ── コンテキストカード ────────────────────────────────────────────────────────
+  async function loadContextCard() {
+    if (!currentThread) return;
+    const card = await apiFetch(`/api/threads/${currentThread}/context`).catch(() => ({}));
+    document.getElementById('ctx-summary').value = card.summary || '';
+    document.getElementById('ctx-decisions').value = card.decisions || '';
+    document.getElementById('ctx-open-questions').value = card.open_questions || '';
+    document.getElementById('ctx-next-actions').value = card.next_actions || '';
+
+    const views = card.agent_views || {};
+    const el = document.getElementById('ctx-agent-views');
+    const keys = Object.keys(views);
+    el.innerHTML = keys.length
+      ? keys.map(k => `<div class="agent-view-item"><strong>${esc(k)}:</strong> ${esc(views[k])}</div>`).join('')
+      : '<span style="font-size:0.78rem;color:rgba(255,255,255,0.3);">（エージェントビューなし）</span>';
+  }
+
+  async function saveContextCard() {
+    if (!currentThread) return;
+    const body = {
+      summary: document.getElementById('ctx-summary').value,
+      decisions: document.getElementById('ctx-decisions').value,
+      open_questions: document.getElementById('ctx-open-questions').value,
+      next_actions: document.getElementById('ctx-next-actions').value,
+    };
+    await apiFetch(`/api/threads/${currentThread}/context`, { method: 'PUT', body: JSON.stringify(body) });
+    alert('保存しました');
+  }
+
+  // ── メモリ ────────────────────────────────────────────────────────────────────
+  async function loadMemoryList(query) {
+    const url = query ? `/api/memory-pins?q=${encodeURIComponent(query)}` : '/api/memory-pins';
+    const pins = await apiFetch(url).catch(() => []);
+    renderMemoryList(pins);
+  }
+
+  function renderMemoryList(pins) {
+    const el = document.getElementById('memory-list');
+    if (!pins.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">📌</div>ピン留めメモリがありません</div>';
+      return;
+    }
+    el.innerHTML = pins.map(p => {
+      const tags = (p.tags || []).map(t => `<span class="tag-pill">${esc(t)}</span>`).join(' ');
+      const date = p.created_at?.slice(0, 10) || '';
+      return `<div class="memory-item">
+        <div class="memory-item-content">${esc(p.content)}</div>
+        <div class="memory-item-meta">${tags}<span>${date}</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  function debounceMemorySearch(val) {
+    clearTimeout(memorySearchTimer);
+    memorySearchTimer = setTimeout(() => loadMemoryList(val), 350);
+  }
+
+  function openPinMemory() { openModal('modal-pin-memory'); }
+
+  async function pinMemory() {
+    const content = document.getElementById('pin-content').value.trim();
+    if (!content) return alert('内容を入力してください');
+    const tagsRaw = document.getElementById('pin-tags').value;
+    const tags = tagsRaw ? tagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+    await apiFetch('/api/memory-pins', { method: 'POST', body: JSON.stringify({ content, tags }) });
+    closeModal('modal-pin-memory');
+    document.getElementById('pin-content').value = '';
+    document.getElementById('pin-tags').value = '';
+    loadMemoryList(document.getElementById('memory-search-input').value);
+  }
+
+  // ── モーダル ──────────────────────────────────────────────────────────────────
+  function openModal(id) { document.getElementById(id).classList.add('active'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); });
+  });
+
+  // ── ユーティリティ ────────────────────────────────────────────────────────────
+  function esc(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── 起動 ─────────────────────────────────────────────────────────────────────
+  (async () => {
+    await initSupabase();
+    supabaseClient.auth.onAuthStateChange((_event, session) => onAuthChange(session));
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    onAuthChange(session);
+    // デフォルトビュー
+    switchView('threads');
+  })();
+</script>
+</body>
+</html>
