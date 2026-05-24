@@ -8,7 +8,7 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import {
   supabase,
-  verifyJwt, getUserIdByToken,
+  verifyJwt as verifyJwtToken, getUserIdByToken,
   getThreads, createThread, archiveThread,
   getRecentMessages, postMessage, deleteMessage,
   getContextCard, upsertContextCard,
@@ -51,7 +51,7 @@ async function resolveToken(req) {
   // Supabase JWT（Web UI）
   if (authHeader?.startsWith('Bearer ')) {
     const jwt = authHeader.slice(7);
-    const userId = await verifyJwt(jwt);
+    const userId = await verifyJwtToken(jwt);
     if (userId) return jwt;
   }
 
