@@ -120,6 +120,21 @@ function createMcpServer() {
     })
   );
 
+  // append_log（post_messageのエイリアス、ナビア向け）
+  server.tool(
+    'append_log',
+    'スレッドにログを追記します',
+    {
+      thread_id: z.string().describe('スレッドID'),
+      source: z.string().describe('記録元（例: fin, gear, navia）'),
+      content: z.string().describe('内容'),
+    },
+    safeTool(async ({ thread_id, source, content }) => {
+      const msg = await postMessage({ thread_id, agent_name: source, role: 'assistant', content });
+      return { content: [{ type: 'text', text: `Log appended: [${msg.id}] ${source}` }] };
+    })
+  );
+
   // get_recent_thread
   server.tool(
     'get_recent_thread',
