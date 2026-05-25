@@ -120,18 +120,18 @@ function createMcpServer() {
     })
   );
 
-  // append_log（post_messageのエイリアス、ナビア向け）
+  // save_note（post_messageのエイリアス、ナビア向け）
   server.tool(
-    'append_log',
-    'スレッドにログを追記します',
+    'save_note',
+    'スレッドにノートを保存します',
     {
       thread_id: z.string().describe('スレッドID'),
-      source: z.string().describe('記録元（例: fin, gear, navia）'),
+      author: z.string().describe('記録者（例: fin, gear, navia）'),
       content: z.string().describe('内容'),
     },
-    safeTool(async ({ thread_id, source, content }) => {
-      const msg = await postMessage({ thread_id, agent_name: source, role: 'assistant', content });
-      return { content: [{ type: 'text', text: `Log appended: [${msg.id}] ${source}` }] };
+    safeTool(async ({ thread_id, author, content }) => {
+      const msg = await postMessage({ thread_id, agent_name: author, role: 'assistant', content });
+      return { content: [{ type: 'text', text: `Note saved: [${msg.id}] ${author}` }] };
     })
   );
 
