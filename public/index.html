@@ -439,7 +439,7 @@
       <div class="memory-search-bar">
         <input type="text" id="memory-search-input" placeholder="メモリを検索..."
           oninput="debounceMemorySearch(this.value)" />
-        <button class="btn btn-primary" onclick="openPinMemory()">＋ ピン</button>
+        <button class="btn btn-primary" onclick="openPinMemory()">＋ メモリ</button>
       </div>
       <div class="memory-list" id="memory-list">
         <div class="empty-state"><div class="empty-icon">📌</div>ピン留めメモリがありません</div>
@@ -475,12 +475,12 @@
 <!-- モーダル: メモリピン -->
 <div class="modal-overlay" id="modal-pin-memory">
   <div class="modal">
-    <h3>メモリをピン留め</h3>
+    <h3>メモリを追加</h3>
     <textarea id="pin-content" placeholder="内容..." rows="4"></textarea>
     <input type="text" id="pin-tags" placeholder="タグ（カンマ区切り）" />
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-pin-memory')">キャンセル</button>
-      <button class="btn btn-primary" onclick="pinMemory()">ピン留め</button>
+      <button class="btn btn-primary" onclick="pinMemory()">追加</button>
     </div>
   </div>
 </div>
