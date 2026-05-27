@@ -10,7 +10,7 @@ import {
   getThreads, createThread, archiveThread,
   getRecentMessages, postMessage, deleteMessage,
   getContextCard, upsertContextCard,
-  pinMemory, searchMemory,
+  pinMemory, searchMemory, deleteMemoryPin,
 } from './db.js';
 
 process.on('unhandledRejection', (reason) => {
@@ -239,6 +239,19 @@ function createMcpServer() {
         return `[${p.id}]${tags}\n${p.content}`;
       });
       return { content: [{ type: 'text', text: `Memory (${pins.length}件):\n\n${lines.join('\n\n')}` }] };
+    })
+  );
+
+  // delete_memory_pin
+  server.tool(
+    'delete_memory_pin',
+    'ピン留めメモリを削除します',
+    {
+      pin_id: z.string().describe('削除するメモリピンのID'),
+    },
+    safeTool(async ({ pin_id }) => {
+      await deleteMemoryPin(pin_id);
+      return { content: [{ type: 'text', text: `Memory pin deleted: [${pin_id}]` }] };
     })
   );
 

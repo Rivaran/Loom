@@ -132,6 +132,14 @@ export async function pinMemory({ content, tags = [], thread_id = null }) {
   return data;
 }
 
+export async function deleteMemoryPin(id) {
+  const { error } = await supabase
+    .from('memory_pins')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+}
+
 export async function searchMemory(query) {
   // テキスト部分一致でシンプル検索（ilike）
   const { data, error } = await supabase
