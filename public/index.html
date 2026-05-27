@@ -725,14 +725,7 @@
 
   async function doArchiveThread() {
     if (!currentThread || !confirm('このスレッドをアーカイブしますか？')) return;
-    await apiFetch(`/api/threads/${currentThread}`, {
-      method: 'PUT',
-      body: JSON.stringify({ archived: true }),
-    }).catch(async () => {
-      // PUT /api/threads/:id は実装していないのでコンテキスト経由で代替しない
-      // archive は専用エンドポイントを将来追加想定。今はサービスロールで直接操作を促す案内
-      alert('アーカイブAPIは未実装です。Supabaseダッシュボードから操作してください。');
-    });
+    await apiFetch(`/api/threads/${currentThread}/archive`, { method: 'PUT' });
     backToThreads();
     loadThreads();
   }

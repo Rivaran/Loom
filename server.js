@@ -358,6 +358,12 @@ app.put('/api/threads/reorder', async (req, res) => {
   res.json({ success: true });
 });
 
+// PUT /api/threads/:id/archive
+app.put('/api/threads/:id/archive', async (req, res) => {
+  const token = await apiAuth(req, res); if (!token) return;
+  res.json(await archiveThread(req.params.id));
+});
+
 // POST /api/threads
 app.post('/api/threads', async (req, res) => {
   const token = await apiAuth(req, res); if (!token) return;
