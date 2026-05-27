@@ -358,6 +358,21 @@ app.put('/api/threads/reorder', async (req, res) => {
   res.json({ success: true });
 });
 
+// PUT /api/threads/:id
+app.put('/api/threads/:id', async (req, res) => {
+  const token = await apiAuth(req, res); if (!token) return;
+  const { title, tags } = req.body;
+  if (!title) return res.status(400).json({ error: 'title is required' });
+  const { data, error } = await supabase
+    .from('threads')
+    .update({ title, tags: tags ?? [], updated_at: new Date().toISOString() })
+    .eq('id', req.params.id)
+    .select('id, title, tags, archived, updated_at')
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 // PUT /api/threads/:id/archive
 app.put('/api/threads/:id/archive', async (req, res) => {
   const token = await apiAuth(req, res); if (!token) return;

@@ -389,6 +389,7 @@
       <div class="thread-detail-header">
         <button class="icon-btn" onclick="backToThreads()">←</button>
         <h2 id="thread-detail-title"></h2>
+        <button class="icon-btn" title="編集" onclick="openEditThread()">✎</button>
         <button class="icon-btn" title="アーカイブ" onclick="doArchiveThread()">🗄</button>
       </div>
       <div class="tab-bar">
@@ -468,6 +469,19 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-create-thread')">キャンセル</button>
       <button class="btn btn-primary" onclick="createThread()">作成</button>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル: スレッド編集 -->
+<div class="modal-overlay" id="modal-edit-thread">
+  <div class="modal">
+    <h3>スレッドを編集</h3>
+    <input type="text" id="edit-thread-title" placeholder="タイトル" />
+    <input type="text" id="edit-thread-tags" placeholder="タグ（カンマ区切り）" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-thread')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveEditThread()">保存</button>
     </div>
   </div>
 </div>
@@ -674,7 +688,7 @@
       const date = t.updated_at?.slice(0, 10) || '';
       return `<div class="thread-item" data-id="${t.id}">
         <span class="drag-handle" title="並び替え">≡</span>
-        <div class="thread-item-body" onclick="openThread('${t.id}', '${esc(t.title)}')">
+        <div class="thread-item-body" onclick="openThread('${t.id}', '${esc(t.title)}', ${JSON.stringify(t.tags||[])})">
           <div class="thread-item-title">${esc(t.title)}</div>
           <div class="thread-item-meta">${tags}<span>${date}</span></div>
         </div>
@@ -712,8 +726,10 @@
     loadThreads();
   }
 
-  async function openThread(id, title) {
+  let currentThreadTags = [];
+  async function openThread(id, title, tags) {
     currentThread = id;
+    currentThreadTags = tags || [];
     document.getElementById('thread-detail-title').textContent = title;
     // タブをメッセージに戻す
     document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
@@ -721,6 +737,24 @@
     switchView('thread');
     document.getElementById('nav-threads').classList.add('active');
     await loadMessages();
+  }
+
+  function openEditThread() {
+    document.getElementById('edit-thread-title').value = document.getElementById('thread-detail-title').textContent;
+    document.getElementById('edit-thread-tags').value = currentThreadTags.join(',');
+    openModal('modal-edit-thread');
+  }
+
+  async function saveEditThread() {
+    const title = document.getElementById('edit-thread-title').value.trim();
+    if (!title) return alert('タイトルを入力してください');
+    const tagsRaw = document.getElementById('edit-thread-tags').value;
+    const tags = tagsRaw ? tagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+    await apiFetch(`/api/threads/${currentThread}`, { method: 'PUT', body: JSON.stringify({ title, tags }) });
+    document.getElementById('thread-detail-title').textContent = title;
+    currentThreadTags = tags;
+    closeModal('modal-edit-thread');
+    loadThreads();
   }
 
   async function doArchiveThread() {
