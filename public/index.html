@@ -576,6 +576,30 @@
     document.getElementById('nav-threads').classList.add('active');
   }
 
+  // ── スワイプでスレッド↔メモリ切替 ────────────────────────────────────────────
+  (function() {
+    let startX = 0, startY = 0;
+    const main = document.getElementById('main');
+    main.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    main.addEventListener('touchend', e => {
+      if (currentThread) return; // 詳細表示中はスワイプ無効
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+      const activeView = document.querySelector('#main > div.active')?.id;
+      if (dx < 0 && activeView === 'view-threads') {
+        switchView('memory');
+        document.getElementById('nav-memory').classList.add('active');
+      } else if (dx > 0 && activeView === 'view-memory') {
+        switchView('threads');
+        document.getElementById('nav-threads').classList.add('active');
+      }
+    }, { passive: true });
+  })();
+
   function switchTab(tab, btn) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
