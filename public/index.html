@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Loom</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -589,6 +590,7 @@
     renderThreadList(threads);
   }
 
+  let threadSortable = null;
   function renderThreadList(threads) {
     const el = document.getElementById('thread-list');
     if (!threads.length) {
@@ -598,11 +600,19 @@
     el.innerHTML = threads.map(t => {
       const tags = (t.tags || []).map(g => `<span class="tag-pill">${esc(g)}</span>`).join(' ');
       const date = t.updated_at?.slice(0, 10) || '';
-      return `<div class="thread-item" onclick="openThread('${t.id}', '${esc(t.title)}')">
+      return `<div class="thread-item" data-id="${t.id}" onclick="openThread('${t.id}', '${esc(t.title)}')">
         <div class="thread-item-title">${esc(t.title)}</div>
         <div class="thread-item-meta">${tags}<span>${date}</span></div>
       </div>`;
     }).join('');
+    if (threadSortable) threadSortable.destroy();
+    threadSortable = new Sortable(el, {
+      animation: 150,
+      onEnd: async () => {
+        const ids = [...el.querySelectorAll('.thread-item')].map(el => el.dataset.id);
+        await apiFetch('/api/threads/reorder', { method: 'PUT', body: JSON.stringify({ ids }) });
+      }
+    });
   }
 
   function toggleArchived() {

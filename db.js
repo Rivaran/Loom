@@ -30,11 +30,18 @@ export async function getUserIdByToken(token) {
 export async function getThreads({ archived = false } = {}) {
   const { data, error } = await supabase
     .from('threads')
-    .select('id, title, tags, archived, created_at, updated_at')
+    .select('id, title, tags, archived, sort_order, created_at, updated_at')
     .eq('archived', archived)
+    .order('sort_order', { ascending: true, nullsFirst: false })
     .order('updated_at', { ascending: false });
   if (error) throw error;
   return data;
+}
+
+export async function reorderThreads(ids) {
+  for (let i = 0; i < ids.length; i++) {
+    await supabase.from('threads').update({ sort_order: i }).eq('id', ids[i]);
+  }
 }
 
 export async function createThread({ title, tags = [] }) {

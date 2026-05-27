@@ -7,7 +7,7 @@ import { z } from 'zod';
 import {
   supabase,
   verifyJwt as verifyJwtToken, getUserIdByToken,
-  getThreads, createThread, archiveThread,
+  getThreads, createThread, archiveThread, reorderThreads,
   getRecentMessages, postMessage, deleteMessage,
   getContextCard, upsertContextCard,
   pinMemory, searchMemory, deleteMemoryPin,
@@ -347,6 +347,15 @@ app.get('/api/threads', async (req, res) => {
   const token = await apiAuth(req, res); if (!token) return;
   const archived = req.query.archived === 'true';
   res.json(await getThreads({ archived }));
+});
+
+// PUT /api/threads/reorder
+app.put('/api/threads/reorder', async (req, res) => {
+  const token = await apiAuth(req, res); if (!token) return;
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids is required' });
+  await reorderThreads(ids);
+  res.json({ success: true });
 });
 
 // POST /api/threads
