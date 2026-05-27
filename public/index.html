@@ -686,9 +686,9 @@
     el.innerHTML = threads.map(t => {
       const tags = (t.tags || []).map(g => `<span class="tag-pill">${esc(g)}</span>`).join(' ');
       const date = t.updated_at?.slice(0, 10) || '';
-      return `<div class="thread-item" data-id="${t.id}">
+      return `<div class="thread-item" data-id="${t.id}" data-title="${esc(t.title)}" data-tags="${esc((t.tags||[]).join(','))}">
         <span class="drag-handle" title="並び替え">≡</span>
-        <div class="thread-item-body" onclick="openThread('${t.id}', '${esc(t.title)}', ${JSON.stringify(t.tags||[])})">
+        <div class="thread-item-body" onclick="openThreadFromEl(this)">
           <div class="thread-item-title">${esc(t.title)}</div>
           <div class="thread-item-meta">${tags}<span>${date}</span></div>
         </div>
@@ -727,6 +727,13 @@
   }
 
   let currentThreadTags = [];
+  function openThreadFromEl(el) {
+    const item = el.closest('.thread-item');
+    const id = item.dataset.id;
+    const title = item.dataset.title;
+    const tags = item.dataset.tags ? item.dataset.tags.split(',') : [];
+    openThread(id, title, tags);
+  }
   async function openThread(id, title, tags) {
     currentThread = id;
     currentThreadTags = tags || [];
