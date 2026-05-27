@@ -426,6 +426,28 @@ app.post('/api/memory-pins', async (req, res) => {
   res.json(await pinMemory({ content, tags, thread_id }));
 });
 
+// PUT /api/memory-pins/:id
+app.put('/api/memory-pins/:id', async (req, res) => {
+  const token = await apiAuth(req, res); if (!token) return;
+  const { content, tags } = req.body;
+  if (!content) return res.status(400).json({ error: 'content is required' });
+  const { data, error } = await supabase
+    .from('memory_pins')
+    .update({ content, tags: tags ?? [] })
+    .eq('id', req.params.id)
+    .select('id, thread_id, content, tags, created_at')
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// DELETE /api/memory-pins/:id
+app.delete('/api/memory-pins/:id', async (req, res) => {
+  const token = await apiAuth(req, res); if (!token) return;
+  await deleteMemoryPin(req.params.id);
+  res.json({ success: true });
+});
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 app.listen(PORT, () => console.log(`Loom running on port ${PORT}`));

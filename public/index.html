@@ -219,9 +219,30 @@
       padding: 12px 14px; background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.07);
       border-radius: 10px; margin-bottom: 6px;
+      position: relative;
     }
+    .memory-item:hover .memory-actions { opacity: 1; }
     .memory-item-content { font-size: 0.88rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #d0e8f8; }
     .memory-item-meta { font-size: 0.72rem; color: rgba(255,255,255,0.35); margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .memory-actions {
+      position: absolute; top: 8px; right: 8px;
+      display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s;
+    }
+    .memory-action-btn {
+      width: 24px; height: 24px; border-radius: 6px; font-size: 0.75rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      border: 1px solid; transition: background 0.15s;
+    }
+    .memory-action-btn.edit {
+      background: rgba(46,134,171,0.15); border-color: rgba(46,134,171,0.3);
+      color: rgba(126,184,224,0.8);
+    }
+    .memory-action-btn.edit:hover { background: rgba(46,134,171,0.35); }
+    .memory-action-btn.del {
+      background: rgba(220,50,50,0.15); border-color: rgba(220,50,50,0.3);
+      color: rgba(255,120,120,0.8);
+    }
+    .memory-action-btn.del:hover { background: rgba(220,50,50,0.35); }
 
     /* ── ボトムナビ ── */
     nav {
@@ -446,6 +467,19 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-pin-memory')">キャンセル</button>
       <button class="btn btn-primary" onclick="pinMemory()">ピン留め</button>
+    </div>
+  </div>
+</div>
+
+<!-- モーダル: メモリ編集 -->
+<div class="modal-overlay" id="modal-edit-memory">
+  <div class="modal">
+    <h3>メモリを編集</h3>
+    <textarea id="edit-pin-content" placeholder="内容..." rows="4"></textarea>
+    <input type="text" id="edit-pin-tags" placeholder="タグ（カンマ区切り）" />
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-memory')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveEditMemory()">保存</button>
     </div>
   </div>
 </div>
@@ -785,7 +819,12 @@
     el.innerHTML = pins.map(p => {
       const tags = (p.tags || []).map(t => `<span class="tag-pill">${esc(t)}</span>`).join(' ');
       const date = p.created_at?.slice(0, 10) || '';
+      const tagsStr = (p.tags || []).join(',');
       return `<div class="memory-item">
+        <div class="memory-actions">
+          <button class="memory-action-btn edit" onclick="openEditMemory('${p.id}',this)" data-content="${esc(p.content)}" data-tags="${esc(tagsStr)}" title="編集">✎</button>
+          <button class="memory-action-btn del" onclick="deleteMemoryPin('${p.id}')" title="削除">✕</button>
+        </div>
         <div class="memory-item-content">${esc(p.content)}</div>
         <div class="memory-item-meta">${tags}<span>${date}</span></div>
       </div>`;
@@ -808,6 +847,30 @@
     closeModal('modal-pin-memory');
     document.getElementById('pin-content').value = '';
     document.getElementById('pin-tags').value = '';
+    loadMemoryList(document.getElementById('memory-search-input').value);
+  }
+
+  async function deleteMemoryPin(id) {
+    if (!confirm('このメモリを削除しますか？')) return;
+    await apiFetch(`/api/memory-pins/${id}`, { method: 'DELETE' });
+    loadMemoryList(document.getElementById('memory-search-input').value);
+  }
+
+  let editingPinId = null;
+  function openEditMemory(id, btn) {
+    editingPinId = id;
+    document.getElementById('edit-pin-content').value = btn.dataset.content;
+    document.getElementById('edit-pin-tags').value = btn.dataset.tags;
+    openModal('modal-edit-memory');
+  }
+
+  async function saveEditMemory() {
+    const content = document.getElementById('edit-pin-content').value.trim();
+    if (!content) return alert('内容を入力してください');
+    const tagsRaw = document.getElementById('edit-pin-tags').value;
+    const tags = tagsRaw ? tagsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+    await apiFetch(`/api/memory-pins/${editingPinId}`, { method: 'PUT', body: JSON.stringify({ content, tags }) });
+    closeModal('modal-edit-memory');
     loadMemoryList(document.getElementById('memory-search-input').value);
   }
 
