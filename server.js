@@ -242,6 +242,29 @@ function createMcpServer() {
     })
   );
 
+  // update_memory_pin
+  server.tool(
+    'update_memory_pin',
+    'ピン留めメモリの内容を更新します',
+    {
+      pin_id: z.string().describe('更新するメモリピンのID'),
+      content: z.string().describe('新しい内容'),
+      tags: z.array(z.string()).optional().describe('新しいタグ（省略時は変更なし）'),
+    },
+    safeTool(async ({ pin_id, content, tags }) => {
+      const updateFields = { content };
+      if (tags !== undefined) updateFields.tags = tags;
+      const { data, error } = await supabase
+        .from('memory_pins')
+        .update(updateFields)
+        .eq('id', pin_id)
+        .select('id, content, tags, created_at')
+        .single();
+      if (error) throw new Error(error.message);
+      return { content: [{ type: 'text', text: `Memory pin updated: [${data.id}]` }] };
+    })
+  );
+
   // delete_memory_pin
   server.tool(
     'delete_memory_pin',
